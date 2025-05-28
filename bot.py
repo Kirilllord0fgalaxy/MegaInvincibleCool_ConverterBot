@@ -24,6 +24,9 @@ class Form(StatesGroup):
     noitca = State()
     valkrs2 = State()
     year = State()
+    valconvert2 = State()
+    hm2 = State()
+    year2 = State()
 
 
 basical_val_k = InlineKeyboardMarkup(inline_keyboard=[
@@ -161,8 +164,42 @@ async def krs(message: Message, state: FSMContext):
         if basval == 'RUB': result = usd[0][int(year)]
         else:result = usd[1][int(year)]
         await message.answer(f'Курс {valkrs2} к {basval} в {2010 + int(year)} году: {result}')
-        await state.clear()
+    await state.clear()
         
+@dp.callback_query(F.data == 'Конвертировать валюту', Form.noitca)
+async def val(callback: CallbackQuery, state: FSMContext):
+    await state.update_data(noitca='Конвертировать валюту')
+    await callback.message.answer('Введите валюту,которую хотите конвертировать в нужном формате:\n Российский рубль(RUB)\n Доллар США(USD)\n Евро(EUR)')
+    await state.set_state(Form.valconvert2)
+    await callback.answer()
+
+@dp.message(Form.valconvert2)
+async def hmc(message:Message, state):
+    await state.update_data(valconvert2=message.text)
+    await message.answer('Сколько валюты конвертировать?')
+    await state.set_state(Form.hm2)
+
+@dp.message(Form.hm2)
+async def yearwrite(message: Message, state: FSMContext):
+    await state.update_data(hm2=message.text)
+    await message.answer('Хорошо!\nТеперь введите цифру 0-14, где\n0-2010 год\n14-2024 год')
+    await state.set_state(Form.year2)
+
+@dp.message(Form.year2)
+async def convert2(message: Message, state: FSMContext):
+    data = await state.get_data()
+    basic_val = data.get('basic_val')
+    hm2 = int(data.get('hm2'))
+    year2 = int(message.text)
+    val = data.get('valconvert2')
+    if basic_val == val:
+        await message.answer('Мне кажется, вы уже знаете ответ;)')
+        await state.clear()
+    else:
+        if val == 'USD':
+            if basic_val == 'RUB': await message.answer(f'{hm2} {val} = {usd[0][year2] * hm2} {basic_val}')
+            else: await message.answer(f'{hm2} {val} = {usd[1][year2] * hm2} {basic_val}')
+    await state.clear()
 
 async def main():
     dp.message.register(start, F.text == '/start')
@@ -178,6 +215,10 @@ async def main():
     dp.message.register(valpr2,Form.noitca)
     dp.message.register(yearw,Form.valkrs2)
     dp.message.register(krs,Form.year)
+    dp.message.register(val,Form.noitca)
+    dp.message.register(hmc,Form.valconvert2)
+    dp.message.register(yearwrite,Form.hm2)
+    dp.message.register(convert2,Form.year2)
 
     await dp.start_polling(bot)
 
