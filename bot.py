@@ -4,12 +4,15 @@ from aiogram import Bot, Dispatcher, F
 from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.context import FSMContext
+from aiogram.client.session.aiohttp import AiohttpSession
 
-API_TOKEN = ''
+session = AiohttpSession(proxy='http://proxy.server:3128')
+API_TOKEN = '7608644975:AAE20VfzcVVKh81d2hW5G5VcKtj6sGwLXPk'
 # Convert bot
 
-usd = [[30,30.3,31,31.8,41.8,60.7,66.9,58,62.6,64.73,75.2,71,80,93,97.25],[0.03,0.03,0.03,0.03,0.02,0.02,0.01,0.02,0.01,0.01,0.01,0.01,0.01,0.01,0.01]]
-
+usd = [30,30.3,31,31.8,41.8,60.7,66.9,58,62.6,64.73,75.2,71,80,93,97.25]
+rub = [0.03,0.03,0.03,0.03,0.02,0.02,0.01,0.02,0.01,0.01,0.01,0.01,0.01,0.01,0.01]
+eur = [[40.3,40.88,39.95,42.32,50.86,67.82,74.2,65.91,73.87,72.49,69.7,84.5,102.5,89,102.25],[1.32,1.39,1.28,1.32,1.32,1.11,1.1,1.13,1.17,1.12,1.13,1.18,1.05,1.08,1.08]]
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher()
 
@@ -94,10 +97,14 @@ async def valpr(callback: CallbackQuery, state: FSMContext):
 async def krsval(message: Message, state: FSMContext):
     data = await state.get_data()
     basic_val = data.get('basic_val')
-    val = message.text
-    a = valsx(val, basic_val)
-    await message.answer(f'Курс {val}: {a} за 1 {basic_val}')
-    await state.clear()
+    val = message.text.upper()
+    try:
+        a = valsx(val, basic_val)
+        await message.answer(f'Курс {val}: {a} за 1 {basic_val}')
+        await state.clear()
+    except:
+        await message.answer('Произошла ошибка.\nВозможно вы ввели валюту не в 3-х буквенном формате(USD,RUB), а возможно ввели вместо цифры букву. Проверьте всё, если всё правильно напишите о проблеме на почту: convertbot@mail.ru')
+
 
 
 @dp.callback_query(F.data == 'Конвертировать валюту', Form.action)
@@ -124,9 +131,13 @@ async def convert(message: Message, state: FSMContext):
     data = await state.get_data()
     basic_val = data.get('basic_val')
     hm = float(data.get('hm'))
-    valconvert = message.text
-    c = valsx(basic_val, valconvert)
-    await message.answer(f'{hm} {valconvert} = {c * hm} {basic_val}')
+    valconvert = message.text.upper()
+    try:
+        c = valsx(basic_val, valconvert)
+        await message.answer(f'{hm} {valconvert} = {c * hm} {basic_val}')
+        await state.clear()
+    except:
+        await message.answer('Произошла ошибка.\nВозможно вы ввели валюту не в 3-х буквенном формате(USD,RUB), а возможно ввели вместо цифры букву. Проверьте всё, если всё правильно напишите о проблеме на почту: convertbot@mail.ru')
     await state.clear()
 
 
@@ -160,12 +171,29 @@ async def krs(message: Message, state: FSMContext):
     valkrs2 = data.get('valkrs2')
     basval = data.get('basic_val')
     year = data.get('year')
-    if valkrs2 == 'USD':
-        if basval == 'RUB': result = usd[0][int(year)]
-        else:result = usd[1][int(year)]
-        await message.answer(f'Курс {valkrs2} к {basval} в {2010 + int(year)} году: {result}')
+    if basval == valkrs2.upper():
+        await message.answer('Мне кажется, вы уже знаете ответ;)')
+        await state.clear()
+    try:
+        if valkrs2.upper() == 'USD':
+            result = usd[int(year)]
+            await message.answer(f'Курс {basval} к {valkrs2.upper()} в {2010 + int(year)} году: {result}')
+        if valkrs2.upper() == 'RUB':
+            result = rub[int(year)]
+            await message.answer(f'Курс {basval} к {valkrs2.upper()} в {2010 + int(year)} году: {result}')
+        if valkrs2.upper() == 'EUR':
+            if basval == 'USD':
+                result = eur[1][int(year)]
+                await message.answer(f'Курс {valkrs2.upper()} к {basval} в {2010 + int(year)} году: {result}')
+            else:
+                result = eur[0][int(year)]
+                await message.answer(f'Курс {valkrs2.upper()} к {basval} в {2010 + int(year)} году: {result}')
+        else:
+            raise ValueError
+    except:
+        await message.answer('Произошла ошибка.\nВозможно вы ввели валюту не в 3-х буквенном формате(USD,RUB), а возможно ввели вместо цифры букву. Проверьте всё, если всё правильно напишите о проблеме на почту: convertbot@mail.ru')
     await state.clear()
-        
+
 @dp.callback_query(F.data == 'Конвертировать валюту', Form.noitca)
 async def val(callback: CallbackQuery, state: FSMContext):
     await state.update_data(noitca='Конвертировать валюту')
@@ -191,16 +219,25 @@ async def convert2(message: Message, state: FSMContext):
     basic_val = data.get('basic_val')
     hm2 = int(data.get('hm2'))
     year2 = int(message.text)
-    val = data.get('valconvert2')
+    val = data.get('valconvert2').upper()
     if basic_val == val:
         await message.answer('Мне кажется, вы уже знаете ответ;)')
         await state.clear()
-    else:
+    try:
         if val == 'USD':
-            if basic_val == 'RUB': await message.answer(f'{hm2} {val} = {usd[0][year2] * hm2} {basic_val}')
-            else: await message.answer(f'{hm2} {val} = {usd[1][year2] * hm2} {basic_val}')
+            await message.answer(f'{hm2} {val} = {usd[year2] * hm2} {basic_val}')
+        if val == 'RUB':
+            await message.answer(f'{hm2} {val} = {rub[year2] * hm2} {basic_val}')
+        elif val == 'EUR':
+            if basic_val == 'USD':
+                await message.answer(f'{hm2} {val} = {eur[1][year2] * hm2} {basic_val}')
+            else:
+                await message.answer(f'{hm2} {val} = {eur[0][year2] * hm2} {basic_val}')
+        else: raise ValueError
+    except:
+        await message.answer('Произошла ошибка.\nВозможно вы ввели валюту не в 3-х буквенном формате(USD,RUB), а возможно ввели вместо цифры букву. Проверьте всё, если всё правильно напишите о проблеме на почту: convertbot@mail.ru')
     await state.clear()
-
+        
 async def main():
     dp.message.register(start, F.text == '/start')
     dp.message.register(help_basval, F.text == '/help')
@@ -223,4 +260,3 @@ async def main():
     await dp.start_polling(bot)
 
 asyncio.run(main())
-
