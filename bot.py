@@ -7,7 +7,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.client.session.aiohttp import AiohttpSession
 
 session = AiohttpSession(proxy='http://proxy.server:3128')
-API_TOKEN = '7608644975:AAE20VfzcVVKh81d2hW5G5VcKtj6sGwLXPk'
+API_TOKEN = ''
 # Convert bot
 
 usd = [30,30.3,31,31.8,41.8,60.7,66.9,58,62.6,64.73,75.2,71,80,93,97.25]
